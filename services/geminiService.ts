@@ -72,23 +72,72 @@ export class GeminiService {
 
   // File Processing
   async processFile(file: File): Promise<{ analysis: string }> {
-    const base64Data = await this.fileToBase64(file);
+    const fileName = file.name.toLowerCase();
     const mimeType = file.type;
 
-    // Route to appropriate model based on file type
-    if (mimeType.startsWith('audio/')) {
-      return this.processAudio(base64Data, mimeType);
-    } else if (mimeType.startsWith('video/')) {
-      return this.processVideo(base64Data, mimeType);
-    } else if (mimeType.startsWith('image/')) {
-      return this.processImage(base64Data, mimeType);
-    } else if (mimeType === 'application/pdf') {
-      return this.processPDF(base64Data, mimeType);
-    } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      return this.processDOCX(file); // DOCX handling via mammoth locally
-    } else {
-      // Default text handling
-      return this.processTextFile(file);
+    // JSON Handling
+    if (fileName.endsWith('.json')) {
+      return this.processJSON(file);
+    }
+    
+    // JSONL Handling
+    if (fileName.endsWith('.jsonl')) {
+      return this.processJSONL(file);
+    }
+
+    // DOCX Handling
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      return this.processDOCX(file); 
+    }
+
+    // Route to appropriate model based on file type for Media and PDF
+    if (mimeType.startsWith('audio/') || 
+        mimeType.startsWith('video/') || 
+        mimeType.startsWith('image/') || 
+        mimeType === 'application/pdf') {
+      
+      const base64Data = await this.fileToBase64(file);
+
+      if (mimeType.startsWith('audio/')) {
+        return this.processAudio(base64Data, mimeType);
+      } else if (mimeType.startsWith('video/')) {
+        return this.processVideo(base64Data, mimeType);
+      } else if (mimeType.startsWith('image/')) {
+        return this.processImage(base64Data, mimeType);
+      } else if (mimeType === 'application/pdf') {
+        return this.processPDF(base64Data, mimeType);
+      }
+    }
+
+    // Default text handling for other types
+    return this.processTextFile(file);
+  }
+
+  private async processJSON(file: File) {
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      return { analysis: JSON.stringify(json, null, 2) };
+    } catch (e) {
+      return { analysis: `Error parsing JSON: ${(e as Error).message}` };
+    }
+  }
+
+  private async processJSONL(file: File) {
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+      const analyzedLines = lines.map((line, idx) => {
+        try {
+          const json = JSON.parse(line);
+          return JSON.stringify(json);
+        } catch (e) {
+          return `[Line ${idx + 1}] Invalid JSON: ${line}`;
+        }
+      });
+      return { analysis: analyzedLines.join('\n') };
+    } catch (e) {
+      return { analysis: `Error processing JSONL: ${(e as Error).message}` };
     }
   }
 
