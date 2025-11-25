@@ -1,0 +1,7 @@
+{
+  "name": "SFL: The Narrative Architect",
+  "description": "An elegant, storytelling-focused prompt engineering studio based on the Systemic Functional Linguistics framework.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
