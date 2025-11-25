@@ -11,7 +11,6 @@ function App() {
   const [activeView, setActiveView] = useState<'library' | 'architect' | 'lab'>('library');
   const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const { apiKeys, setApiKey } = useStore();
 
   const handleEdit = (id: string) => {
     setEditingPromptId(id);
@@ -99,15 +98,10 @@ function App() {
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Google Gemini API Key</label>
-                  <input 
-                    type="password" 
-                    value={apiKeys.google || ''}
-                    onChange={(e) => setApiKey('google', e.target.value)}
-                    placeholder="sk-..."
-                    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-stone-900 focus:outline-none"
-                  />
-                  <p className="text-xs text-stone-400 mt-2">Required for Auto-Generation and The Oracle.</p>
+                  {/* Google API Key input removed in compliance with guidelines */}
+                  <div className="text-sm text-stone-500">
+                    Google API Key is configured via environment variables.
+                  </div>
                 </div>
                  <div>
                   <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Mistral / Ollama</label>

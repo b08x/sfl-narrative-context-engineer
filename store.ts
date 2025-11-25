@@ -7,7 +7,6 @@ export const useStore = create<AppState>()(
     (set) => ({
       prompts: [],
       activePromptId: null,
-      apiKeys: {},
       addPrompt: (prompt) => set((state) => ({ prompts: [prompt, ...state.prompts] })),
       updatePrompt: (id, updates) =>
         set((state) => ({
@@ -20,10 +19,6 @@ export const useStore = create<AppState>()(
         set((state) => ({
           prompts: state.prompts.filter((p) => p.id !== id),
           activePromptId: state.activePromptId === id ? null : state.activePromptId,
-        })),
-      setApiKey: (provider, key) =>
-        set((state) => ({
-          apiKeys: { ...state.apiKeys, [provider]: key },
         })),
     }),
     {

@@ -19,6 +19,17 @@ export interface SFLMode {
   textualDirectives: string;
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  type: 'audio' | 'video' | 'image' | 'text' | 'pdf' | 'document' | 'other';
+  mimeType: string;
+  content: string; // Base64 or Text content
+  analysis?: string; // Transcribed text, image description, or summary
+  status: 'pending' | 'processing' | 'done' | 'error';
+  errorMessage?: string;
+}
+
 export interface PromptSFL {
   id: string;
   title: string;
@@ -28,6 +39,7 @@ export interface PromptSFL {
   sflField: SFLField;
   sflTenor: SFLTenor;
   sflMode: SFLMode;
+  attachments?: Attachment[];
   compiledPrompt?: string;
   versions?: PromptSFL[];
 }
@@ -35,16 +47,10 @@ export interface PromptSFL {
 export interface AppState {
   prompts: PromptSFL[];
   activePromptId: string | null;
-  apiKeys: {
-    google?: string;
-    openai?: string;
-    mistral?: string;
-  };
   addPrompt: (prompt: PromptSFL) => void;
   updatePrompt: (id: string, updates: Partial<PromptSFL>) => void;
   setActivePrompt: (id: string | null) => void;
   deletePrompt: (id: string) => void;
-  setApiKey: (provider: 'google' | 'openai' | 'mistral', key: string) => void;
 }
 
 export const DEFAULT_FIELD: SFLField = {

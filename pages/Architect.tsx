@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowRight, Play, Save, ChevronLeft, Mic, RefreshCw } from 'lucide-react';
+import { Sparkles, ArrowRight, Play, Save, ChevronLeft, Mic, RefreshCw, Paperclip, FileText, Image as ImageIcon, Video, Music, X, Loader2 } from 'lucide-react';
 import { useStore } from '../store';
 import { GeminiService, compileSFLPrompt } from '../services/geminiService';
-import { PromptSFL, SFLField, SFLTenor, SFLMode, DEFAULT_FIELD, DEFAULT_TENOR, DEFAULT_MODE } from '../types';
+import { PromptSFL, SFLField, SFLTenor, SFLMode, Attachment, DEFAULT_FIELD, DEFAULT_TENOR, DEFAULT_MODE } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ArchitectProps {
@@ -14,7 +14,7 @@ interface ArchitectProps {
 type Phase = 'intent' | 'context' | 'persona' | 'structure';
 
 export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
-  const { prompts, addPrompt, updatePrompt, apiKeys } = useStore();
+  const { prompts, addPrompt, updatePrompt } = useStore();
   
   // State
   const [activePhase, setActivePhase] = useState<Phase>(promptId ? 'context' : 'intent');
@@ -26,8 +26,12 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
   const [field, setField] = useState<SFLField>(DEFAULT_FIELD);
   const [tenor, setTenor] = useState<SFLTenor>(DEFAULT_TENOR);
   const [mode, setMode] = useState<SFLMode>(DEFAULT_MODE);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  
   const [testResponse, setTestResponse] = useState<string>('');
   const [isTesting, setIsTesting] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing prompt if editing
   useEffect(() => {
@@ -38,13 +42,14 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
         setField(existing.sflField);
         setTenor(existing.sflTenor);
         setMode(existing.sflMode);
+        setAttachments(existing.attachments || []);
         setActivePhase('context');
       }
     }
   }, [promptId, prompts]);
 
   // AI Service
-  const gemini = new GeminiService(apiKeys.google);
+  const gemini = new GeminiService();
 
   // Handlers
   const handleAutoGenerate = async () => {
@@ -76,7 +81,8 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
       sflField: field,
       sflTenor: tenor,
       sflMode: mode,
-      compiledPrompt: compileSFLPrompt(field, tenor, mode)
+      attachments,
+      compiledPrompt: compileSFLPrompt(field, tenor, mode, attachments)
     };
 
     if (promptId) {
@@ -89,7 +95,7 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
 
   const handleTest = async () => {
     setIsTesting(true);
-    const compiled = compileSFLPrompt(field, tenor, mode);
+    const compiled = compileSFLPrompt(field, tenor, mode, attachments);
     try {
       // Stream simulation for better UX
       const stream = gemini.executePromptStream(compiled);
@@ -104,6 +110,52 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
     } finally {
       setIsTesting(false);
     }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const files: File[] = Array.from(e.target.files);
+    
+    for (const file of files) {
+      const id = uuidv4();
+      let type: Attachment['type'] = 'other';
+      if (file.type.startsWith('audio/')) type = 'audio';
+      else if (file.type.startsWith('video/')) type = 'video';
+      else if (file.type.startsWith('image/')) type = 'image';
+      else if (file.type === 'application/pdf') type = 'pdf';
+      else if (file.type.includes('wordprocessingml') || file.type.includes('text/') || file.type.includes('json') || file.name.endsWith('.md')) type = 'text';
+
+      const newAttachment: Attachment = {
+        id,
+        name: file.name,
+        type,
+        mimeType: file.type,
+        content: '', // Can store base64 if needed for persistence, but focusing on analysis for now
+        status: 'processing'
+      };
+
+      setAttachments(prev => [...prev, newAttachment]);
+
+      // Process immediately
+      try {
+        const result = await gemini.processFile(file);
+        setAttachments(prev => prev.map(a => 
+          a.id === id ? { ...a, status: 'done', analysis: result.analysis } : a
+        ));
+      } catch (err) {
+        console.error(err);
+        setAttachments(prev => prev.map(a => 
+          a.id === id ? { ...a, status: 'error', errorMessage: 'Analysis failed' } : a
+        ));
+      }
+    }
+    
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
   };
 
   const phases: Phase[] = ['intent', 'context', 'persona', 'structure'];
@@ -156,6 +208,64 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
               <SectionHeader title="Chapter I: The Context" subtitle="Define the boundaries of the subject matter." color="text-amber-600" />
               <div className="space-y-6">
                 <InputGroup label="Topic" value={field.topic} onChange={v => setField({...field, topic: v})} placeholder="Central subject..." />
+                
+                {/* Attachments Section */}
+                <div className="pt-4 border-t border-stone-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Source Material</label>
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-amber-600 hover:text-amber-700 text-xs font-medium flex items-center gap-1"
+                    >
+                      <Paperclip size={12} />
+                      Attach Files
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileUpload} 
+                      multiple 
+                      className="hidden" 
+                      accept="audio/*,video/*,image/*,.pdf,.doc,.docx,.txt,.md,.json,.jsonl"
+                    />
+                  </div>
+                  
+                  {attachments.length > 0 && (
+                    <div className="grid gap-3">
+                      {attachments.map(att => (
+                        <div key={att.id} className="bg-white border border-stone-200 rounded-lg p-3 flex items-start gap-3 relative group">
+                           <div className="p-2 bg-stone-50 rounded text-stone-500">
+                              {att.type === 'audio' && <Music size={16} />}
+                              {att.type === 'video' && <Video size={16} />}
+                              {att.type === 'image' && <ImageIcon size={16} />}
+                              {(att.type === 'pdf' || att.type === 'text') && <FileText size={16} />}
+                           </div>
+                           <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-sm font-medium text-stone-800 truncate">{att.name}</span>
+                                <button onClick={() => removeAttachment(att.id)} className="text-stone-300 hover:text-red-500 p-1"><X size={14}/></button>
+                              </div>
+                              {att.status === 'processing' && (
+                                <div className="flex items-center gap-2 text-xs text-amber-600 animate-pulse">
+                                  <Loader2 size={10} className="animate-spin" />
+                                  <span>
+                                    {att.type === 'audio' ? 'Transcribing...' : att.type === 'video' ? 'Analyzing frames...' : 'Processing...'}
+                                  </span>
+                                </div>
+                              )}
+                              {att.status === 'done' && (
+                                <p className="text-xs text-stone-500 line-clamp-2">{att.analysis}</p>
+                              )}
+                              {att.status === 'error' && (
+                                <span className="text-xs text-red-500">{att.errorMessage}</span>
+                              )}
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <InputGroup label="Task Type" value={field.taskType} onChange={v => setField({...field, taskType: v})} placeholder="Essay, Code, Summary..." />
                 <InputGroup label="Domain Specifics" value={field.domainSpecifics} onChange={v => setField({...field, domainSpecifics: v})} placeholder="Specialized knowledge required..." />
                 <InputGroup label="Keywords" value={field.keywords} onChange={v => setField({...field, keywords: v})} placeholder="Key terms to include..." />
@@ -263,7 +373,7 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
              <span className="text-xs font-bold tracking-widest text-stone-400 uppercase">Live Manuscript</span>
            </div>
            <div className="flex-1 p-6 overflow-y-auto bg-stone-50 font-mono text-sm leading-relaxed text-stone-700 whitespace-pre-wrap">
-             {compileSFLPrompt(field, tenor, mode)}
+             {compileSFLPrompt(field, tenor, mode, attachments)}
            </div>
         </div>
         
