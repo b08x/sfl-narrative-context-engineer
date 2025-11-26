@@ -4,11 +4,17 @@ import { Library } from './pages/Library';
 import { Architect } from './pages/Architect';
 import { Lab } from './pages/Lab';
 import { useStore } from './store';
-import { X, Key, Moon, Sun, Monitor } from 'lucide-react';
+import { GeminiService } from './services/geminiService';
+import { X, Key, Moon, Sun, Monitor, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
-  const { theme, setTheme } = useStore();
+  const { 
+    theme, setTheme, 
+    primaryModel, setPrimaryModel, 
+    personaModel, setPersonaModel,
+    availableModels, setAvailableModels 
+  } = useStore();
   const [activeView, setActiveView] = useState<'library' | 'architect' | 'lab'>('library');
   const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -21,6 +27,19 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  // Fetch models on init
+  useEffect(() => {
+    const fetchModels = async () => {
+      const gemini = new GeminiService();
+      const models = await gemini.listModels();
+      if (models && models.length > 0) {
+        setAvailableModels(models);
+        // Ensure defaults are valid if possible, otherwise keep defaults
+      }
+    };
+    fetchModels();
+  }, [setAvailableModels]);
 
   const handleEdit = (id: string) => {
     setEditingPromptId(id);
@@ -106,7 +125,7 @@ function App() {
                 <h2 className="text-2xl font-serif">Preferences</h2>
               </div>
 
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Theme Switcher */}
                 <div>
                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-3">Appearance</label>
@@ -128,21 +147,55 @@ function App() {
                    </div>
                 </div>
 
+                {/* Model Selection */}
+                <div>
+                   <div className="flex items-center gap-2 mb-3">
+                     <Cpu size={16} className="text-stone-400"/>
+                     <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Model Configuration</label>
+                   </div>
+                   
+                   <div className="space-y-4">
+                     <div>
+                       <label className="block text-xs text-stone-500 dark:text-stone-400 mb-1">Primary Model (Generation & Execution)</label>
+                       <select 
+                         value={primaryModel}
+                         onChange={(e) => setPrimaryModel(e.target.value)}
+                         className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg p-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none"
+                       >
+                         {availableModels.length > 0 ? (
+                            availableModels.map(m => <option key={m} value={m}>{m}</option>)
+                         ) : (
+                            <option value={primaryModel}>{primaryModel}</option>
+                         )}
+                       </select>
+                     </div>
+
+                     <div>
+                       <label className="block text-xs text-stone-500 dark:text-stone-400 mb-1">Persona Analysis Model</label>
+                       <select 
+                         value={personaModel}
+                         onChange={(e) => setPersonaModel(e.target.value)}
+                         className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg p-2 text-sm text-stone-900 dark:text-stone-100 focus:outline-none"
+                       >
+                         {availableModels.length > 0 ? (
+                            availableModels.map(m => <option key={m} value={m}>{m}</option>)
+                         ) : (
+                            <option value={personaModel}>{personaModel}</option>
+                         )}
+                       </select>
+                       <p className="text-[10px] text-stone-400 mt-1">Use 'gemini-3-pro-preview' for large files to avoid token limits.</p>
+                     </div>
+                   </div>
+                </div>
+
                 {/* API Config */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                      <Key size={16} className="text-stone-400"/>
-                     <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">API Configuration</label>
+                     <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">API Key</label>
                   </div>
-                  <div className="text-sm text-stone-500 dark:text-stone-400">
-                    Google API Key is configured via environment variables.
-                  </div>
-                </div>
-                 
-                 <div>
-                  <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-2">Mistral / Ollama</label>
-                  <div className="p-4 bg-stone-50 dark:bg-stone-800 rounded-lg text-sm text-stone-400 italic">
-                    Support coming soon in version 1.1
+                  <div className="text-sm text-stone-500 dark:text-stone-400 bg-stone-50 dark:bg-stone-800 p-3 rounded-lg border border-stone-100 dark:border-stone-700">
+                    <span className="text-green-600 dark:text-green-500">● Configured</span> via environment
                   </div>
                 </div>
               </div>

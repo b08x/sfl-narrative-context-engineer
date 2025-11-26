@@ -26,7 +26,7 @@ const PERSONA_PRESETS = [
 ];
 
 export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
-  const { prompts, addPrompt, updatePrompt } = useStore();
+  const { prompts, addPrompt, updatePrompt, primaryModel, personaModel } = useStore();
   
   // State
   const [activePhase, setActivePhase] = useState<Phase>(promptId ? 'context' : 'intent');
@@ -70,7 +70,8 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
     if (!goal.trim()) return;
     setIsGenerating(true);
     try {
-      const result = await gemini.generateSFLFromGoal(goal);
+      // Use Primary Model for SFL Generation
+      const result = await gemini.generateSFLFromGoal(goal, primaryModel);
       if (result) {
         setTitle(result.title);
         setField(result.field);
@@ -79,7 +80,7 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
         setActivePhase('context');
       }
     } catch (e) {
-      alert("Failed to generate structure. Check your API Key.");
+      alert(`Failed to generate structure: ${(e as Error).message}`);
     } finally {
       setIsGenerating(false);
     }
@@ -111,8 +112,8 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
     setIsTesting(true);
     const compiled = compileSFLPrompt(field, tenor, mode, attachments);
     try {
-      // Stream simulation for better UX
-      const stream = gemini.executePromptStream(compiled);
+      // Stream simulation for better UX using Primary Model
+      const stream = gemini.executePromptStream(compiled, primaryModel);
       let fullText = '';
       setTestResponse('');
       for await (const chunk of stream) {
@@ -120,7 +121,7 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
         setTestResponse(prev => prev + chunk);
       }
     } catch (e) {
-      setTestResponse("Error executing prompt. Please check settings.");
+      setTestResponse(`Error executing prompt: ${(e as Error).message}`);
     } finally {
       setIsTesting(false);
     }
@@ -174,16 +175,17 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
     
     setIsAnalyzingPersona(true);
     try {
-      const result = await gemini.analyzeFilesForTenor(files);
+      // Use Persona Model for file analysis
+      const result = await gemini.analyzeFilesForTenor(files, personaModel);
       if (result) {
         setTenor({
           ...tenor,
           ...result
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to analyze persona", err);
-      alert("Could not analyze files. Ensure your API key is valid and files are supported.");
+      alert(`Could not analyze files: ${err.message}`);
     } finally {
       setIsAnalyzingPersona(false);
       if (personaFileInputRef.current) personaFileInputRef.current.value = '';

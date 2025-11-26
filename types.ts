@@ -50,11 +50,17 @@ export interface AppState {
   prompts: PromptSFL[];
   activePromptId: string | null;
   theme: Theme;
+  primaryModel: string;
+  personaModel: string;
+  availableModels: string[];
   addPrompt: (prompt: PromptSFL) => void;
   updatePrompt: (id: string, updates: Partial<PromptSFL>) => void;
   setActivePrompt: (id: string | null) => void;
   deletePrompt: (id: string) => void;
   setTheme: (theme: Theme) => void;
+  setPrimaryModel: (model: string) => void;
+  setPersonaModel: (model: string) => void;
+  setAvailableModels: (models: string[]) => void;
 }
 
 export const DEFAULT_FIELD: SFLField = {

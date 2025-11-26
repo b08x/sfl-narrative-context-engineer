@@ -10,8 +10,31 @@ export class GeminiService {
     this.client = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
+  async listModels(): Promise<string[]> {
+    try {
+      const response = await this.client.models.list();
+      const modelNames: string[] = [];
+      // The response is a Pager<Model>, which is async iterable
+      for await (const model of response) {
+        if (model.name) {
+          modelNames.push(model.name);
+        }
+      }
+      
+      // Filter for gemini models to keep the list clean
+      return modelNames.filter(name => name && name.includes('gemini'));
+    } catch (error) {
+      console.warn("Failed to list models, falling back to defaults.", error);
+      return [
+        'gemini-3-pro-preview',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-thinking-preview-09-2025'
+      ];
+    }
+  }
+
   // Generate the initial SFL structure from a vague goal
-  async generateSFLFromGoal(goal: string): Promise<{ field: SFLField, tenor: SFLTenor, mode: SFLMode, title: string } | null> {
+  async generateSFLFromGoal(goal: string, model: string = 'gemini-3-pro-preview'): Promise<{ field: SFLField, tenor: SFLTenor, mode: SFLMode, title: string } | null> {
     const prompt = `
       You are an expert in Systemic Functional Linguistics (SFL) applied to Prompt Engineering.
       Analyze the user's goal: "${goal}".
@@ -28,7 +51,7 @@ export class GeminiService {
 
     try {
       const response = await this.client.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: model,
         contents: prompt,
         config: {
           responseMimeType: 'application/json'
@@ -45,7 +68,7 @@ export class GeminiService {
   }
 
   // Analyze files to construct a Persona (Tenor)
-  async analyzeFilesForTenor(files: File[]): Promise<SFLTenor | null> {
+  async analyzeFilesForTenor(files: File[], model: string = 'gemini-3-pro-preview'): Promise<SFLTenor | null> {
     const parts: any[] = [];
 
     for (const file of files) {
@@ -82,9 +105,8 @@ export class GeminiService {
     parts.push({ text: prompt });
 
     try {
-      // Using gemini-2.5-flash for efficient multimodal analysis
       const response = await this.client.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: model,
         contents: { parts },
         config: {
           responseMimeType: 'application/json'
@@ -94,17 +116,20 @@ export class GeminiService {
       const text = response.text;
       if (!text) return null;
       return JSON.parse(text);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Persona Analysis Error:", error);
+      if (error.message && error.message.includes('token count exceeds')) {
+         throw new Error(`The uploaded files exceed the token limit for ${model}. Please try fewer files or use gemini-3-pro-preview.`);
+      }
       throw error;
     }
   }
 
   // Execute the final prompt
-  async executePrompt(compiledPrompt: string): Promise<string> {
+  async executePrompt(compiledPrompt: string, model: string = 'gemini-3-pro-preview'): Promise<string> {
     try {
       const response = await this.client.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: model,
         contents: compiledPrompt,
       });
       return response.text || "No response generated.";
@@ -114,10 +139,10 @@ export class GeminiService {
     }
   }
   
-  // Stream execution (Mocking the stream interface for now to keep it simple in UI, or real impl)
-  async *executePromptStream(compiledPrompt: string) {
+  // Stream execution
+  async *executePromptStream(compiledPrompt: string, model: string = 'gemini-3-pro-preview') {
       const responseStream = await this.client.models.generateContentStream({
-        model: 'gemini-2.5-flash',
+        model: model,
         contents: compiledPrompt,
       });
 
