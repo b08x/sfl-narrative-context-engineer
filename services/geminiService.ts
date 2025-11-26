@@ -44,6 +44,62 @@ export class GeminiService {
     }
   }
 
+  // Analyze files to construct a Persona (Tenor)
+  async analyzeFilesForTenor(files: File[]): Promise<SFLTenor | null> {
+    const parts: any[] = [];
+
+    for (const file of files) {
+      const mimeType = file.type;
+      
+      if (mimeType.startsWith('image/') || mimeType.startsWith('audio/') || mimeType === 'application/pdf') {
+        const base64 = await this.fileToBase64(file);
+        parts.push({ inlineData: { mimeType, data: base64 }});
+      } else {
+        // Text/Doc extraction
+        const textContent = await this.extractTextFromFile(file);
+        if (textContent) {
+           parts.push({ text: `Content from ${file.name}:\n${textContent}` });
+        }
+      }
+    }
+
+    if (parts.length === 0) return null;
+
+    const prompt = `
+      Analyze the provided content (images, audio, or documents) to determine the author's or speaker's persona.
+      Identify the distinct voice, tone, and relationship with the audience found in these materials.
+      
+      Construct a Systemic Functional Linguistics (SFL) Tenor framework that accurately mimics this persona.
+      Return strictly a JSON object with this structure:
+      {
+        "aiPersona": "A short, descriptive title for this persona (e.g. 'Witty Analyst', 'Empathetic Coach')",
+        "targetAudience": ["Inferred Primary Audience", "Inferred Secondary Audience"],
+        "desiredTone": "Adjectives describing the tone (e.g. 'Sarcastic', 'Professional', 'Warm')",
+        "interpersonalStance": "The relationship to the audience (e.g. 'Peer-to-peer', 'Authoritative', 'Servant-Leader')"
+      }
+    `;
+    
+    parts.push({ text: prompt });
+
+    try {
+      // Using gemini-2.5-flash for efficient multimodal analysis
+      const response = await this.client.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: { parts },
+        config: {
+          responseMimeType: 'application/json'
+        }
+      });
+
+      const text = response.text;
+      if (!text) return null;
+      return JSON.parse(text);
+    } catch (error) {
+      console.error("Persona Analysis Error:", error);
+      throw error;
+    }
+  }
+
   // Execute the final prompt
   async executePrompt(compiledPrompt: string): Promise<string> {
     try {
@@ -87,7 +143,8 @@ export class GeminiService {
 
     // DOCX Handling
     if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      return this.processDOCX(file); 
+      const text = await this.extractTextFromDOCX(file);
+      return { analysis: text || "Empty document." };
     }
 
     // Route to appropriate model based on file type for Media and PDF
@@ -111,6 +168,21 @@ export class GeminiService {
 
     // Default text handling for other types
     return this.processTextFile(file);
+  }
+
+  // Helper to extract text from generic files for Persona analysis
+  private async extractTextFromFile(file: File): Promise<string> {
+    const fileName = file.name.toLowerCase();
+    if (fileName.endsWith('.docx')) {
+      return await this.extractTextFromDOCX(file);
+    }
+    // Try reading as text
+    try {
+       return await file.text();
+    } catch (e) {
+       console.warn(`Could not read file ${file.name} as text.`);
+       return "";
+    }
   }
 
   private async processJSON(file: File) {
@@ -193,14 +265,14 @@ export class GeminiService {
     return { analysis: response.text || "No analysis generated." };
   }
 
-  private async processDOCX(file: File) {
+  private async extractTextFromDOCX(file: File): Promise<string> {
     try {
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
-      return { analysis: result.value || "Empty document." };
+      return result.value || "";
     } catch (e) {
       console.error("DOCX extraction failed", e);
-      return { analysis: "Failed to extract text from DOCX." };
+      return "";
     }
   }
 

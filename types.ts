@@ -44,13 +44,17 @@ export interface PromptSFL {
   versions?: PromptSFL[];
 }
 
+export type Theme = 'light' | 'dark';
+
 export interface AppState {
   prompts: PromptSFL[];
   activePromptId: string | null;
+  theme: Theme;
   addPrompt: (prompt: PromptSFL) => void;
   updatePrompt: (id: string, updates: Partial<PromptSFL>) => void;
   setActivePrompt: (id: string | null) => void;
   deletePrompt: (id: string) => void;
+  setTheme: (theme: Theme) => void;
 }
 
 export const DEFAULT_FIELD: SFLField = {
