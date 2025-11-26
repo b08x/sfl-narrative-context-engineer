@@ -5,6 +5,8 @@ import { useStore } from '../store';
 import { GeminiService, compileSFLPrompt } from '../services/geminiService';
 import { PromptSFL, SFLField, SFLTenor, SFLMode, Attachment, DEFAULT_FIELD, DEFAULT_TENOR, DEFAULT_MODE } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ArchitectProps {
   promptId: string | null;
@@ -495,12 +497,13 @@ export const Architect: React.FC<ArchitectProps> = ({ promptId, onClose }) => {
                INVOKE MUSE
              </button>
            </div>
-           <div className="flex-1 p-6 overflow-y-auto prose prose-stone dark:prose-invert prose-sm">
+           <div className="flex-1 p-6 overflow-y-auto">
              {testResponse ? (
-               <div className="markdown-body text-stone-800 dark:text-stone-200">
-                 {/* Simple rendering for now, could be ReactMarkdown */}
-                 {testResponse.split('\n').map((line, i) => <p key={i} className="min-h-[1em]">{line}</p>)}
-               </div>
+                <div className="prose prose-stone dark:prose-invert prose-sm max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {testResponse}
+                  </ReactMarkdown>
+                </div>
              ) : (
                <div className="h-full flex flex-col items-center justify-center text-stone-300 dark:text-stone-700 italic">
                  <Sparkles size={24} className="mb-2 opacity-50"/>

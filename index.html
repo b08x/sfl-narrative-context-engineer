@@ -77,6 +77,52 @@
       .dark ::-webkit-scrollbar-thumb:hover {
         background: #44403c;
       }
+
+      /* Shadcn / Theme Variables */
+      :root {
+        --background: 0 0% 98%; /* stone-50 */
+        --foreground: 24 5% 10%; /* stone-900 */
+        --card: 0 0% 100%;
+        --card-foreground: 24 5% 10%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 24 5% 10%;
+        --primary: 24 5% 10%; /* stone-900 */
+        --primary-foreground: 60 5% 96%; /* stone-50 */
+        --secondary: 60 5% 96%; /* stone-100 */
+        --secondary-foreground: 24 5% 10%;
+        --muted: 60 5% 96%;
+        --muted-foreground: 25 5% 45%; /* stone-500 */
+        --accent: 60 5% 96%;
+        --accent-foreground: 24 5% 10%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 60 5% 96%;
+        --border: 20 6% 90%; /* stone-200 */
+        --input: 20 6% 90%;
+        --ring: 24 5% 10%;
+        --radius: 0.5rem;
+      }
+
+      .dark {
+        --background: 20 14.3% 4.1%; /* stone-950 */
+        --foreground: 60 5% 96%; /* stone-100 */
+        --card: 24 10% 10%; /* stone-900 */
+        --card-foreground: 60 5% 96%;
+        --popover: 20 14.3% 4.1%;
+        --popover-foreground: 60 5% 96%;
+        --primary: 60 5% 96%; /* stone-100 */
+        --primary-foreground: 24 5% 10%; /* stone-900 */
+        --secondary: 24 5% 15%; /* stone-800 */
+        --secondary-foreground: 60 5% 96%;
+        --muted: 24 5% 15%;
+        --muted-foreground: 25 5% 60%; /* stone-400 */
+        --accent: 24 5% 15%;
+        --accent-foreground: 60 5% 96%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 60 5% 96%;
+        --border: 24 5% 15%; /* stone-800 */
+        --input: 24 5% 15%;
+        --ring: 24 5% 84%; /* stone-300 */
+      }
     </style>
   <script type="importmap">
 {
@@ -90,7 +136,9 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "mammoth": "https://esm.sh/mammoth@1.6.0"
+    "mammoth": "https://esm.sh/mammoth@1.6.0",
+    "react-markdown": "https://esm.sh/react-markdown@9?external=react,react-dom",
+    "remark-gfm": "https://esm.sh/remark-gfm@4"
   }
 }
 </script>

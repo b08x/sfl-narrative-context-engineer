@@ -14,11 +14,22 @@ export class GeminiService {
     try {
       const response = await this.client.models.list();
       const modelNames: string[] = [];
-      // The response is a Pager<Model>, which is async iterable
-      for await (const model of response) {
-        if (model.name) {
-          modelNames.push(model.name);
+      
+      // Safety check for iterable response
+      if (response && typeof response[Symbol.asyncIterator] === 'function') {
+        for await (const model of response) {
+          if (model.name) {
+            modelNames.push(model.name);
+          }
         }
+      } else {
+        console.warn("Model list response is not iterable", response);
+        // Fallback defaults immediately if structure isn't as expected
+        return [
+          'gemini-3-pro-preview',
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-thinking-preview-09-2025'
+        ];
       }
       
       // Filter for gemini models to keep the list clean
